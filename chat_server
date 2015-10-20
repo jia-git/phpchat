@@ -1,0 +1,8 @@
+#!/bin/bash 
+if [ $# -eq 2 ]; then
+  /usr/bin/php chat_server.php $1 $2
+elif [ $# -eq 1 ]; then
+  /usr/bin/php chat_server.php $1
+else
+  /usr/bin/php chat_server.php
+fi
