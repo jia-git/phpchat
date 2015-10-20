@@ -186,8 +186,13 @@ class Manager {
       $client->prompt();
       return;
     }
-    $this->rooms[$name] = new Room($client->name, $name);
+    $room = new Room($client->name, $name);
+    $this->rooms[$name] = $room;
+    echo $client->name.' created room '.$name."\n";
     $client->respond("Room $name created.");
+    $room->clients[$client->name] = $client;
+    $client->room_id = $name;
+    $client->respond('entering room: '.$name);    
     $client->prompt();
   }
   
@@ -203,10 +208,20 @@ class Manager {
       $client->prompt();
       return;
     }
-    foreach ($room->clients as $client) {
-      $client->room_id = '';
+    if ($client->room_id == $name) {
+      $client->respond("You have to leave $name before you can remove it.");
+      $client->prompt();
+      return;
+    }
+    foreach ($room->clients as $room_client) {
+      $room_client->room_id = '';
+      $room_client->newline();
+      $room_client->respond('leaving room: '.$room->name.', room removed.');
+      $room_client->prompt();
+      
     }
     unset($this->rooms[$name]);
+    echo $client->name.' removed room '.$name."\n";
     $client->respond("Room $name removed.");
     $client->prompt();
   }
@@ -220,12 +235,42 @@ class Manager {
     $client->prompt();
   }
   
+  public function list_users($client) {
+    $client->respond('Users are:');
+    if ($client->room_id) {
+      $room = $this->rooms[$client->room_id];
+      foreach ($room->clients as $room_client) {
+        $client->respond('*'.$room_client->name.($room_client == $client ? '(**this is you)' : ''));
+      }      
+    } else {
+      foreach ($this->login_clients as $login_client) {
+        $client->respond('*'.$login_client->name.($login_client == $client ? '(**this is you)' : '').' in '.($login_client->room_id ? $login_client->room_id : 'lobby').'.');
+      }
+    }
+    $client->respond('end of list.');
+    $client->prompt();
+  }
+  
+  public function find_user($client, $name) {
+    if (!isset($this->login_clients[$name])) {
+      $client->respond("User $name not found.");
+      $client->prompt();
+      return;
+    }
+    $user = $this->login_clients[$name];
+    $client->respond("User $name is in ".($user->room_id ? $user->room_id : 'lobby')).'.';
+    $client->prompt();
+  }
+  
   public function join_room($client, $name) {
     if ($client->room_id === $name) {
+      $client->respond("You've already in room $name");
+      $client->prompt();
       return;
     }
     if (!isset($this->rooms[$name])) {
       $client->respond("Sorry, no room with name '$name' found.");
+      $client->prompt();
       return;
     }
     if ($client->room_id) {
@@ -283,7 +328,7 @@ class Room {
   public function join($client) {
     $this->clients[$client->name] = $client;
     $client->room_id = $this->name;
-    $this->broadcast($client, '* user has joined chat: '.$client->name);
+    $this->broadcast($client, '*user has joined '.$this->name.': '.$client->name);
     $client->respond('entering room: '.$this->name);
     foreach ($this->clients as $name => $room_client) {
       $client->respond('*'.$name.($room_client === $client ? '(**this is you)' : ''));
@@ -295,7 +340,7 @@ class Room {
   public function leave($client) {
     unset($this->clients[$client->name]);
     $client->room_id = '';
-    $this->broadcast(null, '* user has left chat: '.$client->name);
+    $this->broadcast(null, '*user has left '.$this->name.': '.$client->name);
     $client->respond('leaving room: '.$this->name);
     $client->prompt();
   }
@@ -354,10 +399,21 @@ class Client {
       $this->prompt();
       return;
     }
-    $params = preg_split("/[\s,]+/", $cmd);
+    $params = preg_split("/[\s,]+/", $cmd, 3);
     switch (strtolower($params[0])) {
     	case 'rooms':
     	  Manager::instance()->list_rooms($this);
+    	  break;
+    	case 'users':
+    	  Manager::instance()->list_users($this);
+    	  break;
+    	case 'find':
+        if (!isset($params[1])) {
+    	    $this->respond('Please give a user name.');
+    	    $this->prompt();
+    	  } else {
+    	    Manager::instance()->find_user($this, $params[1]);
+    	  }
     	  break;
     	case 'create':
     	  if (!isset($params[1])) {
@@ -424,6 +480,9 @@ class Client {
     	  $this->respond('*/whomi - tell you who you are.');
     	  $this->respond('*/whereami - tell you where you are.');
     	  $this->respond('*/whisper :to: :msg: - send a private message to another user.');
+    	  $this->respond('*/rooms - list all rooms.');
+    	  $this->respond('*/users - list all users in a room or in lobby.');
+    	  $this->respond('*/find :user: - find a user.');
     	  $this->respond('*/quit - quit chat.');
     	  $this->respond('end of list.');
     	  $this->prompt();
