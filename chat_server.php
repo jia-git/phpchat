@@ -473,6 +473,7 @@ class Client {
     	case 'help':
     	  $this->respond('Available commands:');
     	  $this->respond('*/help - this message.');
+    	  $this->respond('*/quit - quit chat.');
     	  $this->respond('*/create :room: - create a chat room.');
     	  $this->respond('*/remove :room: - remove a chat room, you must be the creator.');
     	  $this->respond('*/join :room: - join a chat room.');
@@ -483,7 +484,6 @@ class Client {
     	  $this->respond('*/rooms - list all rooms.');
     	  $this->respond('*/users - list all users in a room or in lobby.');
     	  $this->respond('*/find :user: - find a user.');
-    	  $this->respond('*/quit - quit chat.');
     	  $this->respond('end of list.');
     	  $this->prompt();
     	  break;
