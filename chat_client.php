@@ -26,7 +26,7 @@ while (true) {
   } else if ($num_changes > 0) {
     if (in_array($socket, $read)) {
       $input = fread($socket, 2048);
-      if (!$input) {
+      if (!$input && feof($socket)) {
         echo "Connection closed\n";
         break;
       } else {
